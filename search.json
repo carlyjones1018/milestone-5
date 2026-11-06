@@ -1,0 +1,23 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "dolphins",
+    "section": "",
+    "text": "This is a Quarto website.\nTo learn more about Quarto websites visit https://quarto.org/docs/websites."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this site"
+  },
+  {
+    "objectID": "dolphin-presence.html",
+    "href": "dolphin-presence.html",
+    "title": "Sarasota bottlenose dolphin sightings, 1971–2009",
+    "section": "",
+    "text": "Each dot is one recorded bottlenose dolphin sighting. The color shows the year, so the scatter plot compares where sightings were recorded over time. Dense areas show where sightings were reported, not necessarily where dolphins were most abundant; survey effort may vary by place and year.\n\nlibrary(tidyverse)\n\n── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──\n✔ dplyr     1.2.1     ✔ readr     2.2.0\n✔ forcats   1.0.1     ✔ stringr   1.6.0\n✔ ggplot2   4.0.3     ✔ tibble    3.3.1\n✔ lubridate 1.9.5     ✔ tidyr     1.3.2\n✔ purrr     1.2.2     \n── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──\n✖ dplyr::filter() masks stats::filter()\n✖ dplyr::lag()    masks stats::lag()\nℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors\n\ndataset_id &lt;- \"bb7c6f27-8efe-4bec-977f-a9c353574771\"\napi_url &lt;- paste0(\n  \"https://api.obis.org/v3/occurrence?datasetid=\",\n  dataset_id,\n  \"&size=10000\"\n)\n\nobis_data &lt;- jsonlite::fromJSON(\n  paste(readLines(api_url, warn = FALSE), collapse = \"\\n\"),\n  simplifyVector = FALSE\n)\n\nif (is.null(obis_data$total) || is.null(obis_data$results)) {\n  stop(\"OBIS did not return the expected occurrence records.\")\n}\nif (length(obis_data$results) != as.integer(obis_data$total)) {\n  stop(\"OBIS returned an incomplete set of occurrence records.\")\n}\n\nif (any(purrr::map_chr(\n  obis_data$results,\n  \\(record) record$dataset_id\n) != dataset_id)) {\n  stop(\"OBIS returned records from an unexpected dataset.\")\n}\n\nsightings &lt;- purrr::map_dfr(obis_data$results, \\(record) {\n  if (is.null(record$eventDate) ||\n      is.null(record$decimalLongitude) ||\n      is.null(record$decimalLatitude)) {\n    stop(\"An OBIS record is missing its date or coordinates.\")\n  }\n\n  tibble(\n    sighting_date = as.POSIXct(\n      record$eventDate,\n      format = \"%Y-%m-%dT%H:%M:%OS\",\n      tz = \"UTC\"\n    ),\n    longitude = as.numeric(record$decimalLongitude),\n    latitude = as.numeric(record$decimalLatitude)\n  )\n})\n\nif (anyNA(sightings)) {\n  stop(\"An OBIS sighting has an invalid date or coordinate.\")\n}\n\nsightings &lt;- sightings |&gt;\n  mutate(sighting_year = as.integer(format(sighting_date, \"%Y\")))\n\nThe plot includes 6,391 sightings from 1971 to 2009.\n\nggplot(\n  sightings,\n  aes(x = longitude, y = latitude, color = sighting_year)\n) +\n  geom_point(alpha = 0.55, size = 1.4) +\n  coord_quickmap() +\n  scale_color_viridis_c(name = \"Sighting year\", breaks = seq(1971, 2009, by = 5)) +\n  labs(\n    title = \"Bottlenose dolphin sightings around Sarasota\",\n    x = \"Longitude\",\n    y = \"Latitude\",\n    caption = \"One dot = one sighting | OBIS/SDRP | CC BY-NC 4.0.\"\n  ) +\n  theme_minimal()\n\n\n\n\n\n\n\n\nSource: Wells, R., R. Tyson, and J. Allen. 2017. Sarasota Dolphin Research Program Bottlenose Sightings 1971–2009. Version 1.0.0. Dataset published in OBIS-SEAMAP. https://doi.org/10.82144/cfb9c450. Licensed CC BY-NC 4.0."
+  }
+]
